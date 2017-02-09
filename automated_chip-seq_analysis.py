@@ -33,10 +33,12 @@ if pc == 'cortez_mac':
     picard = '/Users/temporary/Sources/picard.jar'
     homer = '/Users/temporary/Sources/homer/bin/'
     fastqc = '/Users/temporary/Sources/FastQC.app/Contents/MacOS/fastqc'
+    flexbar = '/usr/local/bin/flexbar_v2.5_macosx/flexbar'
 
     # experiment specific information
     output_directory = "/Users/temporary/projects/{}".format(experiment_name)
     fasta_directory = "/Users/temporary/projects/{}/fastq".format(experiment_name)
+    adaptors = '/Users/temporary/genomes/adapters/illumina_truseq.fasta'
 
     # Reference files
     if species == 'mouse':
@@ -50,6 +52,7 @@ if pc == 'cortez_mac':
         bwa_index = '/Users/temporary/genomes/Homo_sapiens_hg38/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex/genome'
         reference_genome = '/Users/temporary/genomes/Homo_sapiens_hg38/Homo_sapiens/UCSC/hg38/Sequence/BWAIndex/genome.fa'
         genome_size = '2.7e9'
+
 
     else:
         print(
@@ -94,7 +97,7 @@ def flexbar_trim(sample_base):
     # '-ao' = adapter min overlap
     # '-ae' = adapter trim end
     print("Start trimming {}".format(sample_base))
-    path_to_executable = flexbar
+    path_to_executable = '{}'.format(flexbar)
     suffix_for_output = '-t {}/{}-trimmed'.format(fasta_directory, sample_base)
     adaptor_trim_end = '-ae ANY'
     adaptor_overlap = '-ao 5'
@@ -276,8 +279,8 @@ def samstat_analysis(sample_base):
 
 def excess_file_clean_up(sample_base):
     #os.remove('{}/BWA_BAM_files/{}.sam'.format(output_directory, sample_base))
-    os.remove('{}/BAM_files/{}.rg.sam'.format(output_directory, sample_base))
-    os.remove('./BAM_files/{}.bam'.format(sample_base))
+    os.remove('{}/BWA_BAM_files/{}.rg.sam'.format(output_directory, sample_base))
+    os.remove('{}/BWA_BAM_files/{}.bam'.format(output_directory, sample_base))
 
 
 def automated_chip_seq_analysis(sample_base):
@@ -291,7 +294,7 @@ def automated_chip_seq_analysis(sample_base):
     samstat_analysis(sample_base)
     excess_file_clean_up(sample_base)
 
-automated_chip_seq_analysis('asisi_etoh_input')
-automated_chip_seq_analysis('asisi_4oht_input')
+#automated_chip_seq_analysis('asisi_etoh_input')
+#automated_chip_seq_analysis('asisi_4oht_input')
 automated_chip_seq_analysis('asisi_etoh_rpa_ip')
 automated_chip_seq_analysis('asisi_4oht_rpa_ip')
