@@ -33,7 +33,6 @@ if pc == 'cortez_mac':
     picard = '/Users/temporary/Sources/picard.jar'
     homer = '/Users/temporary/Sources/homer/bin/'
     fastqc = '/Users/temporary/Sources/FastQC.app/Contents/MacOS/fastqc'
-    flexbar = '/usr/local/bin/flexbar_v2.5_macosx'
 
     # experiment specific information
     output_directory = "/Users/temporary/projects/{}".format(experiment_name)
@@ -95,7 +94,7 @@ def flexbar_trim(sample_base):
     # '-ao' = adapter min overlap
     # '-ae' = adapter trim end
     print("Start trimming {}".format(sample_base))
-    path_to_executable = '{}'.format(flexbar)
+    path_to_executable = flexbar
     suffix_for_output = '-t {}/{}-trimmed'.format(fasta_directory, sample_base)
     adaptor_trim_end = '-ae ANY'
     adaptor_overlap = '-ao 5'
@@ -232,6 +231,26 @@ def bam_sort(sample_base):
     print("Done sorting {}".format(sample_base))
 
 
+def bam_index(sample_base):
+    print("Start indexing {}".format(sample_base))
+    path_to_executable = '{} index'.format(samtools)
+    path_to_samples = '{}/BWA_BAM_files/{}.sorted.bam'.format(output_directory, sample_base)
+    command = [path_to_executable, path_to_samples]
+    call_code = ' '.join(command)
+    print(call_code)
+    process = subprocess.Popen([call_code], shell=True,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT)
+    while True:
+        output = process.stdout.readline()
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print output.strip()
+        rc = process.poll()
+    print("Done indexing {}".format(sample_base))
+
+
 def samstat_analysis(sample_base):
     print("Start SAMSTAT check {}".format(sample_base))
 
@@ -255,53 +274,10 @@ def samstat_analysis(sample_base):
               '{}/quality_control/{}.sorted.bam.samstat.html'.format(output_directory, sample_base))
 
 
-def bam_cleanup(sample_base):
-    print("starting exclusion of unmappable reads for {}".format(sample_base))
-    path_to_executable = '{} view'.format(samtools)
-    path_to_samples = '{}/BWA_BAM_files/{}.sorted.bam'.format(output_directory, sample_base)
-    output_filename = '> {}/BWA_BAM_files/{}.filtered.sorted.bam'.format(output_directory, sample_base)
-    important_options = '-bF 4 -q 1' # these options exclude the reads with MAPQ of 0 and reads that map to multiple places
-    threads = '--threads {}'.format(n_cpus)
-    command = [path_to_executable, important_options, threads, path_to_samples, output_filename]
-    call_code = ' '.join(command)
-    print(call_code)
-    process = subprocess.Popen([call_code], shell=True,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT)
-    while True:
-        output = process.stdout.readline()
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print output.strip()
-        rc = process.poll()
-    print("Done sam to bam conversion {}".format(sample_base))
-
-
-def bam_index(sample_base):
-    print("Start indexing {}".format(sample_base))
-    path_to_executable = '{} index'.format(samtools)
-    path_to_samples = '{}/BWA_BAM_files/{}.filtered.sorted.bam'.format(output_directory, sample_base)
-    command = [path_to_executable, path_to_samples]
-    call_code = ' '.join(command)
-    print(call_code)
-    process = subprocess.Popen([call_code], shell=True,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT)
-    while True:
-        output = process.stdout.readline()
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print output.strip()
-        rc = process.poll()
-    print("Done indexing {}".format(sample_base))
-
 def excess_file_clean_up(sample_base):
     #os.remove('{}/BWA_BAM_files/{}.sam'.format(output_directory, sample_base))
-    os.remove('{}/BWA_BAM_files/{}.rg.sam'.format(output_directory, sample_base))
-    os.remove('./BWA_BAM_files/{}.bam'.format(sample_base))
-    os.remove('./BWA_BAM_files/{}.sorted.bam'.format(sample_base))
+    os.remove('{}/BAM_files/{}.rg.sam'.format(output_directory, sample_base))
+    os.remove('./BAM_files/{}.bam'.format(sample_base))
 
 
 def automated_chip_seq_analysis(sample_base):
