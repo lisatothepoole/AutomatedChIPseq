@@ -33,6 +33,8 @@ if pc == 'cortez_mac':
     picard = '/Users/temporary/Sources/picard.jar'
     homer = '/Users/temporary/Sources/homer/bin/'
     fastqc = '/Users/temporary/Sources/FastQC.app/Contents/MacOS/fastqc'
+    flexbar = '/usr/local/bin/flexbar_v2.5_macosx'
+    macs2 = '/Users/lisapoole/Sources/MACS2-2.1.1.20160309/macs2'
 
     # experiment specific information
     output_directory = "/Users/temporary/projects/{}".format(experiment_name)
@@ -94,7 +96,7 @@ def flexbar_trim(sample_base):
     # '-ao' = adapter min overlap
     # '-ae' = adapter trim end
     print("Start trimming {}".format(sample_base))
-    path_to_executable = flexbar
+    path_to_executable = '{}'.format(flexbar)
     suffix_for_output = '-t {}/{}-trimmed'.format(fasta_directory, sample_base)
     adaptor_trim_end = '-ae ANY'
     adaptor_overlap = '-ao 5'
@@ -290,6 +292,8 @@ def automated_chip_seq_analysis(sample_base):
     bam_index(sample_base)
     samstat_analysis(sample_base)
     excess_file_clean_up(sample_base)
+
+
 
 automated_chip_seq_analysis('asisi_etoh_input')
 automated_chip_seq_analysis('asisi_4oht_input')
