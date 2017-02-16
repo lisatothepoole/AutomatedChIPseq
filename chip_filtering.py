@@ -1,17 +1,19 @@
+#!/usr/bin/python2
+"""
+This pipeline is for analyzing ChIP-seq peaks that were obtained using the automated_chip-seq_analysis.py
+
+"""
+
 import pandas as pd
 import os
 import subprocess
-import MACS2
 
 #  Experiment specific
 output_directory = '/Users/lisapoole/Desktop/E76b_asisi_rpa_chip-seq'
 ip_file = '/Users/lisapoole/Desktop/E76b_asisi_rpa_chip-seq/'
-species = 'human'  #  Valid options are 'human' or 'mouse'
-q_value_cutoff = '0.005' #  Default is 0.01, use 0.05 for broad peaks
-duplication_choice = 'auto'  #  Valid options are 'auto' to have macs2 determine the max number of reads possible at one site, 'all' to keep all tags at the same location, or an integer value selected by the user
-peak_type = 'broad'  # Valid choices are 'broad' or 'normal'(narrow)
+species = 'human'  # Valid options are 'human' or 'mouse'
 pc = 'lisa'
-cutoff_of_reads = '30'
+cutoff_of_reads = '90'
 
 # Step 1: import blacklist files
 if pc == 'lisa':
@@ -24,7 +26,7 @@ if pc == 'lisa':
     else:
         print('Species value invalid.')
 
-    #  Setting up programs
+    # Setting up programs
     macs2 = '/Users/lisapoole/Sources/MACS2-2.1.1.20160309/bin/macs2'
 
 elif pc == 'cortez_mac':
@@ -37,7 +39,7 @@ elif pc == 'cortez_mac':
     else:
         print('Species value invalid.')
 
-    #  Setting up programs
+    # Setting up programs
     macs2 = '/Users/temporary/Sources/MACS2-2.1.1.20160309/macs2'
 
 else:
@@ -50,53 +52,18 @@ elif species == 'mouse':
 else:
     print('Species value invalid.')
 
-
-#  Indexing blacklist, known asisi cut sites, and hg38 repeat files
+# Indexing blacklist, known asisi cut sites, and hg38 repeat files
 blacklist = pd.read_table(blacklist_file, usecols=[0, 1, 2], names=['chr', 'start', 'end'])
 blacklist['index_name'] = blacklist['chr'].map(str) + '_' + blacklist['start'].map(str) + '_' + blacklist['end'].map(
-   str)
+    str)
 
 known = pd.read_csv(asisi_cut_sites)
 known['index_name'] = known['chr'].map(str) + '_' + known['start'].map(str) + '_' + known['end'].map(str)
 
-repeats = pd.read_table(repeat_file, usecols=[0,1,2,3], names=['chr', 'start', 'end', 'repeat_type'])
+repeats = pd.read_table(repeat_file, usecols=[0, 1, 2, 3], names=['chr', 'start', 'end', 'repeat_type'])
 keep_list = ['telomere']
 repeats = repeats[repeats['repeat_type'].isin(keep_list)]
 
-
-def macs2_peak_calling(sample_base):
-    print("Begin calling peaks for {}".format(sample_base))
-    if not os.path.exists('{}/peaks'.format(output_directory)):
-        os.mkdir('{}/peaks'.format(output_directory))
-    path_to_executable = '{} callpeak'.format(macs2)
-    treatment_file = '-t {}/{}_rpa_ip.sorted_filtered_mapq.bam'.format(output_directory, sample_base)
-    input_file = '-c {}/{}_input.sorted_filtered_mapq.bam'.format(output_directory, sample_base)
-    input_format = '-f BAM'
-    duplicates = '--keep-dup {}'.format(duplication_choice)
-    genome = '-g {}'.format(genome_size)
-    naming = '-n {}'.format(sample_base)
-    output_dir = '--outdir {}/peaks'.format(output_directory)
-    enrichment = '--qvalue {}'.format(q_value_cutoff)
-    if peak_type == 'broad':
-        peak_indicator = '--broad'
-    elif peak_type == 'normal':
-        pass
-    else:
-        print('Invalid peak_type choice.')
-    command = [path_to_executable, treatment_file, input_file, input_format, duplicates, enrichment, genome, naming, peak_indicator, output_dir]
-    call_code = ' '.join(command)
-    print(call_code)
-    process = subprocess.Popen([call_code], shell=True,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT)
-    while True:
-        output = process.stdout.readline()
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print output.strip()
-        rc = process.poll()
-    print("Done calling peaks for {}".format(sample_base))
 
 
 def peak_blacklist_filter(sample_base):
@@ -139,23 +106,21 @@ def peak_blacklist_filter(sample_base):
 def peak_control_filter(treatment_base, control_base, save_name):
     #  This function removes the peaks that are also present in the etoh control peak file
 
-    treatment_file = '{}/peaks/{}_filtered_peaks.csv'.format(output_directory, treatment_base)
-    control_file = '{}/peaks/{}_filtered_peaks.csv'.format(output_directory, control_base)
+    treatment_file = '{}/peaks/{}_cutoff_{}.csv'.format(output_directory, treatment_base, cutoff_of_reads)
+    control_file = '{}/peaks/{}_cutoff_{}.csv'.format(output_directory, control_base, cutoff_of_reads)
 
     ctrl_file = pd.read_csv(control_file, comment='#')
     print('total number of control peaks', ctrl_file.shape)
-    #print(ctrl_file.head(10))
+    # print(ctrl_file.head(10))
 
     treat_file = pd.read_csv(treatment_file, comment='#')
     print('total number of treatment peaks', treat_file.shape)
-    #print(treat_file.head(10))
+    # print(treat_file.head(10))
 
     treat_file['index_name'] = treat_file['chr'].map(str) + '_' + treat_file['start'].map(str) + '_' + treat_file[
         'end'].map(str)
     ctrl_file['index_name'] = ctrl_file['chr'].map(str) + '_' + ctrl_file['start'].map(str) + '_' + ctrl_file[
         'end'].map(str)
-    print(treat_file.head(10))
-    print(ctrl_file.head(10))
 
     overlaps = []
     for i in treat_file['chr'].unique():
@@ -184,7 +149,7 @@ def peak_control_filter(treatment_base, control_base, save_name):
 def overlap_asisi_known(sample_base, save_name):
     #  This function will find peaks that overlap with known asisi cut sites
     # peak_file = '{}/peaks/{}_filtered_peaks.csv'.format(output_directory, sample_base)
-    peak_file = '{}/peaks/{}_cutoff_{}.csv'.format(output_directory, sample_base, cutoff_of_reads)
+    peak_file = '{}/peaks/{}_control_filtered.csv'.format(output_directory, sample_base, cutoff_of_reads)
 
     peaks = pd.read_csv(peak_file, comment='#')
     print('total number of filtered peaks', peaks.shape)
@@ -246,7 +211,9 @@ def peak_filter_blacklist_telomere(sample_base):
     telomere_exclusion(sample_base)
 
 
-# macs2_peak_calling('asisi_4oht')
-#macs2_peak_calling('asisi_etoh')
 # peak_filter_blacklist_telomere('asisi_4oht')
-overlap_asisi_known('asisi_4oht', 'overlapping_peaks_4oht')
+# overlap_asisi_known('asisi_4oht', 'overlapping_peaks_4oht')
+#peak_blacklist_filter('asisi_etoh')
+# peak_control_filter('asisi_4oht', 'asisi_etoh', 'asisi')
+
+# overlap_asisi_known('asisi', 'asisi_known_overlap')
