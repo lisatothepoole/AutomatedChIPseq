@@ -22,8 +22,8 @@ import subprocess
 
 species = 'human'
 read_length = 75
-sample_suffix = 'fastq' # Valid options for sequencing data are usually 'fasta', 'fastq', or 'fa'
-compression_suffix = 'gz' # Usually 'gz' or 'zip'
+sample_suffix = 'fastq'  # Valid options for sequencing data are usually 'fasta', 'fastq', or 'fa'
+compression_suffix = 'gz'  # Usually 'gz' or 'zip'
 read_type = 'SE'  # Valid options are 'SE' (single-end) or 'PE' (paired-end)
 pc = 'cortez_mac'
 experiment_name = 'E76_RPA_ChIP-seq'
@@ -72,12 +72,14 @@ def fastqc_analysis(sample_base):
     # This step analyzes the original sequencing file for initial quality control (duplication rates, sequencing quality)
     print("Starting fastq analysis of {}".format(sample_base))
     if not os.path.exists('{}/quality_control'.format(output_directory)):
-        os.mkdir('{}/quality_control'.format(output_directory))  # Creates a folder to contain all quality control analyses
+        os.mkdir(
+            '{}/quality_control'.format(output_directory))  # Creates a folder to contain all quality control analyses
 
     path_to_executable = fastqc
     input_files = '{}/{}.{}.{}'.format(fasta_directory, sample_base, sample_suffix, compression_suffix)
     output = '-o {}/quality_control'.format(output_directory)
-    important_options = '-f {} -t {}'.format(sample_suffix, n_cpus)  # -t indicates number of threads/cpus -f specifies the format of the file
+    important_options = '-f {} -t {}'.format(sample_suffix,
+                                             n_cpus)  # -t indicates number of threads/cpus -f specifies the format of the file
     command = [path_to_executable, output, important_options, input_files]
     call_code = ' '.join(command)
     print(call_code)
