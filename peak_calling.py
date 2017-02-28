@@ -116,7 +116,7 @@ def homer_tag_directory(sample_base):
     print("Done making Tag directory for {}".format(sample_base))
 
 
-def homer_peak_calling(sample_base, peak_style):
+def homer_peak_calling(sample_base):
     path_to_executable = '{}'.format(homer)
     homer_program = 'findPeaks'
     tag_directory = '{}/peaks/{}'.format(output_directory, sample_base)
