@@ -168,3 +168,12 @@ def peak_filter_blacklist_telomere(sample_base):
     peak_blacklist_filter(sample_base)
     telomere_exclusion(sample_base)
 
+
+def peak_cutoff_filtering(file_name, save_name):
+    # This removes peaks that are below the cutoff for number of reads determined to legitimate
+    data_file = '{}/peaks/{}.csv'.format(output_directory, file_name)
+    peaks = pd.read_csv(data_file, header=0)
+    print('number of peaks', peaks.shape)
+    new_peaks = peaks[peaks['pileup'] >= {}.__format__(cutoff_of_reads)]
+    print('number of peaks above cutoff', new_peaks.shape)
+    new_peaks.to_csv('{}/peaks/{}_cutoff_{}.csv'.format(output_directory, save_name, cutoff_of_reads), index=False)
