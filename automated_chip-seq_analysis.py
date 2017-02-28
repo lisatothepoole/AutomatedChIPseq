@@ -9,7 +9,10 @@ entitled "fastq" within a folder corresponding to the experiment name;
 modify general information in the first part of the script
 (starting with sample base).
 
-Takes zipped fasta/q files and results in sorted bam files that are indexed to be viewed via a genome browser and an Excel file of peaks with a BED file of peak summits.
+Takes zipped fasta/q files and results in sorted bam files that are indexed to be viewed via a genome browser and a
+SAM or BAM file for peak calling to be used with the peak_calling python code. All files are outputted to a folder with
+the experiment name in the projects folder on the temporary account on the lab mac (or another specified location listed
+after 'output directory = ').
 """
 
 import os
@@ -17,20 +20,23 @@ import subprocess
 
 # General information - modify appropriately for each experiment
 
-number_of_samples = '4'  # Number of sequencing samples
 species = 'human'
 read_length = 75
-sample_suffix = 'fastq'
-compression_suffix = 'gz'
-read_type = 'SE'  # Valid options are SE (single-end) or PE (paired-end)
-n_cpus = 8
-pc = 'lisa'
-experiment_name = 'E76b_RPA_ChIP-seq'
-q_value_cutoff = '0.01'  # Default is 0.01, use 0.05 for broad peaks
-duplication_choice = 'all'  # Valid options are 'auto' to have macs2 determine the max number of reads possible at one site, 'all' to keep all tags at the same location, or an integer value selected by the user
-peak_type = 'normal'  # Valid choices are 'broad' or 'normal'(narrow)
+sample_suffix = 'fastq' # Valid options for sequencing data are usually 'fasta', 'fastq', or 'fa'
+compression_suffix = 'gz' # Usually 'gz' or 'zip'
+read_type = 'SE'  # Valid options are 'SE' (single-end) or 'PE' (paired-end)
+pc = 'cortez_mac'
+experiment_name = 'E76_RPA_ChIP-seq'
 
+#  PC setup - modify only if locations of things have changed
 if pc == 'cortez_mac':
+    # experiment specific information
+    output_directory = "/Users/temporary/projects/{}".format(experiment_name)
+    fasta_directory = "/Users/temporary/projects/{}/fastq".format(experiment_name)
+
+    n_cpus = 8  # Number of computer cores to use in parallel (speeds up program)
+    adaptors = '/Users/temporary/genomes/adapters/illumina_truseq.fasta'
+
     # identifying path of programs
     samtools = '/usr/local/bin/samtools'
     samstat = '/usr/local/bin/samstat'
@@ -39,12 +45,6 @@ if pc == 'cortez_mac':
     homer = '/Users/temporary/Sources/homer/bin/'
     fastqc = '/Users/temporary/Sources/FastQC.app/Contents/MacOS/fastqc'
     flexbar = '/usr/local/bin/flexbar_v2.5_macosx'
-    macs2 = '/Users/lisapoole/Sources/MACS2-2.1.1.20160309/macs2'
-    adaptors = '/Users/temporary/genomes/adapters/illumina_truseq.fasta'
-
-    # experiment specific information
-    output_directory = "/Users/temporary/projects/{}".format(experiment_name)
-    fasta_directory = "/Users/temporary/projects/{}/fastq".format(experiment_name)
 
     # Reference files
     if species == 'mouse':
@@ -63,26 +63,21 @@ if pc == 'cortez_mac':
         quit()
 
 elif pc == 'lisa':
-    output_directory = '/Users/lisapoole/Desktop/E76b_asisi_rpa_chip-seq'
+    output_directory = '/Users/lisapoole/Desktop/{}'.format(experiment_name)
     # Setting up programs
-    macs2 = '/Users/lisapoole/Sources/MACS2-2.1.1.20160309/bin/macs2'
+    macs2 = '/Users/lisapoole/Sources/MACS2-2.1.1.20160309/macs2'
 
-if species == 'human':
-    genome_size = '2.7e9'
-elif species == 'mouse':
-    genome_size = '1.87e9'
 
 def fastqc_analysis(sample_base):
-    # this step analyzes the fastq file obtained from sequencing to get some preliminary quality analyses
+    # This step analyzes the original sequencing file for initial quality control (duplication rates, sequencing quality)
     print("Starting fastq analysis of {}".format(sample_base))
     if not os.path.exists('{}/quality_control'.format(output_directory)):
-        os.mkdir('{}/quality_control'.format(output_directory))
+        os.mkdir('{}/quality_control'.format(output_directory))  # Creates a folder to contain all quality control analyses
 
     path_to_executable = fastqc
     input_files = '{}/{}.{}.{}'.format(fasta_directory, sample_base, sample_suffix, compression_suffix)
     output = '-o {}/quality_control'.format(output_directory)
-    important_options = '-f {} -t {}'.format(sample_suffix,
-                                             n_cpus)  # -t indicates number of threads/cpus -f specifies the format of the file
+    important_options = '-f {} -t {}'.format(sample_suffix, n_cpus)  # -t indicates number of threads/cpus -f specifies the format of the file
     command = [path_to_executable, output, important_options, input_files]
     call_code = ' '.join(command)
     print(call_code)
@@ -313,46 +308,10 @@ def samstat_analysis(sample_base):
               '{}/quality_control/{}.sorted.bam.samstat.html'.format(output_directory, sample_base))
 
 
-def macs2_peak_calling(sample_base):
-    print("Begin calling peaks for {}".format(sample_base))
-    if not os.path.exists('{}/peaks'.format(output_directory)):
-        os.mkdir('{}/peaks'.format(output_directory))
-    path_to_executable = '{} callpeak'.format(macs2)
-    treatment_file = '-t {}/{}_rpa_ip.sorted.bam'.format(output_directory, sample_base)
-    input_file = '-c {}/{}_input.sorted.bam'.format(output_directory, sample_base)
-    input_format = '-f BAM'
-    duplicates = '--keep-dup {}'.format(duplication_choice)
-    genome = '-g {}'.format(genome_size)
-    naming = '-n {}'.format(sample_base)
-    output_dir = '--outdir {}/peaks'.format(output_directory)
-    enrichment = '--qvalue {}'.format(q_value_cutoff)
-    if peak_type == 'broad':
-        peak_indicator = '--broad'
-    elif peak_type == 'normal':
-        peak_indicator = ''
-    else:
-        print('Invalid peak_type choice.')
-    command = [path_to_executable, treatment_file, input_file, input_format, duplicates, enrichment, genome, naming,
-               peak_indicator, output_dir]
-    call_code = ' '.join(command)
-    print(call_code)
-    process = subprocess.Popen([call_code], shell=True,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT)
-    while True:
-        output = process.stdout.readline()
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print output.strip()
-        rc = process.poll()
-    print("Done calling peaks for {}".format(sample_base))
-
-
 def excess_file_clean_up(sample_base):
-    os.remove('{}/BWA_BAM_files/{}.sam'.format(output_directory, sample_base))
-    os.remove('{}/BAM_files/{}.rg.sam'.format(output_directory, sample_base))
-    os.remove('./BAM_files/{}.bam'.format(sample_base))
+    # This removes unnecessary files that were made in the process of the analyzing the data
+    os.remove('{}/BWA_BAM_files/{}.rg.sam'.format(output_directory, sample_base))
+    os.remove('./BWA_BAM_files/{}.bam'.format(sample_base))
 
 
 def automated_chip_seq_analysis(sample_base):
@@ -365,5 +324,3 @@ def automated_chip_seq_analysis(sample_base):
     bam_index(sample_base)
     samstat_analysis(sample_base)
     excess_file_clean_up(sample_base)
-
-macs2_peak_calling('asisi_etoh')
